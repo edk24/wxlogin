@@ -246,7 +246,7 @@
         return;
       }
 
-      const authUrl = `${serverUrl}/auth/authorize?app_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}`;
+      const authUrl = `${serverUrl}/oauth/authorize?app_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}`;
 
       // 显示授权 URL
       document.getElementById('authUrl').style.display = 'block';
@@ -270,7 +270,7 @@
       document.getElementById('authStatus').textContent = '正在获取用户信息...';
 
       try {
-        const response = await fetch(`${serverUrl}/auth/callback?code=${code}`);
+        const response = await fetch(`${serverUrl}/oauth/callback?code=${code}`);
         const data = await response.json();
 
         if (data.openid) {

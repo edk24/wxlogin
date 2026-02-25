@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Form, Input, Button, Card, message } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
-import axios from 'axios';
+import request from '../api/request';
 
 const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
@@ -9,8 +9,8 @@ const Login: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
   const handleSubmit = async (values: { username: string; password: string }) => {
     setLoading(true);
     try {
-      const res = await axios.post('http://localhost:3000/admin/auth/login', values);
-      localStorage.setItem('token', res.data.access_token);
+      const res: any = await request.post('/admin/auth/login', values);
+      localStorage.setItem('token', res.access_token);
       message.success('登录成功');
       onLogin();
     } catch (error) {

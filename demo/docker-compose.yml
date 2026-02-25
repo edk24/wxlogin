@@ -1,0 +1,11 @@
+version: "3.8"
+
+services:
+  wx-auth-server:
+    image: edk24/wx-auth-server:v0.0.4
+    container_name: wx-auth-server
+    ports:
+      - "3008:80"
+    volumes:
+      - ./.env:/app/.env
+    restart: unless-stopped

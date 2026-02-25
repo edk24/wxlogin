@@ -1,7 +1,7 @@
 import { Controller, Post, Body } from '@nestjs/common';
 import { JssdkService } from './jssdk.service';
 
-@Controller('api/jssdk')
+@Controller('jssdk')
 export class JssdkController {
   constructor(private jssdkService: JssdkService) {}
 

@@ -1,11 +1,13 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import { Cache } from 'cache-manager';
+import { randomUUID } from 'crypto';
 import { WechatService } from './wechat.service';
 import { Project } from '../project/project.entity';
 import { User } from '../user/user.entity';
 import { AuthLog } from '../log/log.entity';
-import { randomUUID } from 'crypto';
 
 @Injectable()
 export class AuthService {
@@ -17,7 +19,36 @@ export class AuthService {
     @InjectRepository(AuthLog)
     private logRepository: Repository<AuthLog>,
     private wechatService: WechatService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
+
+  // 获取项目信息
+  async getProject(appId: string): Promise<Project> {
+    const project = await this.projectRepository.findOne({
+      where: { app_id: appId, status: 1 }
+    });
+    if (!project) {
+      throw new Error('项目不存在或已禁用');
+    }
+    return project;
+  }
+
+  // 保存state数据到Redis
+  async saveStateData(stateData: any): Promise<string> {
+    const stateId = randomUUID();
+    await this.cacheManager.set(`oauth:state:${stateId}`, JSON.stringify(stateData), 300000); // 5分钟
+    return stateId;
+  }
+
+  // 从Redis获取state数据
+  async getStateData(stateId: string): Promise<any> {
+    const data = await this.cacheManager.get(`oauth:state:${stateId}`);
+    if (!data) {
+      throw new Error('授权已过期，请重新授权');
+    }
+    await this.cacheManager.del(`oauth:state:${stateId}`); // 使用后立即删除
+    return JSON.parse(data as string);
+  }
 
   // 生成微信授权URL
   async generateAuthUrl(appId: string, redirectUri: string, scope: string, state: string): Promise<string> {
@@ -33,9 +64,8 @@ export class AuthService {
   }
 
   // 处理微信回调
-  async handleCallback(code: string, state: string) {
-    // 解析state获取项目信息
-    const stateData = JSON.parse(Buffer.from(state, 'base64').toString());
+  async handleCallback(code: string, stateData: any) {
+    // 直接使用传入的stateData对象
     const { appId, redirect, scope } = stateData;
 
     // 获取项目信息
@@ -97,14 +127,14 @@ export class AuthService {
     });
     await this.logRepository.save(log);
 
-    // 生成临时token
-    const tempToken = randomUUID();
-
-    // TODO: 将token和用户信息存入Redis，设置5分钟过期
-
+    // 返回用户信息
     return {
       redirect: redirect,
-      token: tempToken,
+      openid: user.openid,
+      nickname: user.nickname || '',
+      avatar: user.avatar || '',
+      sex: user.sex || 0,
+      state: stateData.state || '',
     };
   }
 }

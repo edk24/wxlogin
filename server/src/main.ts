@@ -10,6 +10,9 @@ async function bootstrap() {
     credentials: true,
   });
 
+  // 设置全局API前缀
+  app.setGlobalPrefix('api');
+
   await app.listen(3000);
   console.log(`应用已启动，监听端口: 3000`);
 }

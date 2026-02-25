@@ -23,5 +23,5 @@ export const getUsers = (params?: { page?: number; pageSize?: number; keyword?: 
 
 // 获取单个用户
 export const getUser = (id: number) => {
-  return request.get(`/admin/users/${id}`);
+  return request.get(`/users/${id}`);
 };

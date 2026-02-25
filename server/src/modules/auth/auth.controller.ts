@@ -9,28 +9,30 @@ export class AuthController {
   // 发起授权
   @Get('authorize')
   async authorize(
-    @Query('appId') appId: string,
-    @Query('redirect') redirect: string,
+    @Query('app_id') appId: string,
+    @Query('redirect_uri') redirect: string,
     @Query('scope') scope: string,
     @Query('state') state: string,
     @Res() res: Response,
   ) {
     try {
-      // 构造state参数
+      // 构造完整的state数据
       const stateData = {
         appId,
         redirect,
         scope: scope || 'snsapi_base',
         state: state || '',
       };
-      const encodedState = Buffer.from(JSON.stringify(stateData)).toString('base64');
 
-      // 生成微信授权URL
+      // 保存到Redis，获取短ID
+      const stateId = await this.authService.saveStateData(stateData);
+
+      // 生成微信授权URL（只传递短ID）
       const authUrl = await this.authService.generateAuthUrl(
         appId,
         redirect,
         scope || 'snsapi_base',
-        encodedState,
+        stateId,
       );
 
       // 重定向到微信授权页面
@@ -44,14 +46,36 @@ export class AuthController {
   @Get('callback')
   async callback(
     @Query('code') code: string,
-    @Query('state') state: string,
+    @Query('state') stateId: string,
     @Res() res: Response,
   ) {
     try {
-      const result = await this.authService.handleCallback(code, state);
+      // 从Redis获取完整的state数据
+      const stateData = await this.authService.getStateData(stateId);
 
-      // 重定向回业务项目
-      const redirectUrl = `${result.redirect}?token=${result.token}`;
+      // 使用stateData处理回调
+      const result = await this.authService.handleCallback(code, stateData);
+
+      // 构造URL参数
+      const params = new URLSearchParams();
+      params.append('openid', result.openid);
+
+      if (result.nickname) {
+        params.append('nickname', result.nickname);
+      }
+      if (result.avatar) {
+        params.append('avatar', result.avatar);
+      }
+      if (result.sex) {
+        params.append('sex', result.sex.toString());
+      }
+      if (result.state) {
+        params.append('state', result.state);
+      }
+
+      // 重定向回业务项目，携带用户信息
+      const separator = result.redirect.includes('?') ? '&' : '?';
+      const redirectUrl = `${result.redirect}${separator}${params.toString()}`;
       res.redirect(redirectUrl);
     } catch (error) {
       res.status(400).json({ error: error.message });
