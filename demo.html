@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>微信授权统一平台 - Demo</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: #000;
+      color: #fff;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+
+    .header h1 {
+      font-size: 24px;
+      font-weight: 500;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 8px;
+      padding: 24px;
+      margin-bottom: 20px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+
+    .card h2 {
+      font-size: 18px;
+      margin-bottom: 16px;
+      color: #262626;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      cursor: pointer;
+      margin-right: 10px;
+      margin-bottom: 10px;
+      transition: all 0.3s;
+    }
+
+    .btn-primary {
+      background: #1890ff;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: #40a9ff;
+    }
+
+    .btn-success {
+      background: #52c41a;
+      color: #fff;
+    }
+
+    .btn-success:hover {
+      background: #73d13d;
+    }
+
+    .input-group {
+      margin-bottom: 16px;
+    }
+
+    .input-group label {
+      display: block;
+      margin-bottom: 8px;
+      color: #595959;
+      font-size: 14px;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #d9d9d9;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+
+    .user-info {
+      display: none;
+      padding: 16px;
+      background: #f5f5f5;
+      border-radius: 6px;
+    }
+
+    .user-info.show {
+      display: block;
+    }
+
+    .user-info .avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      margin-bottom: 12px;
+    }
+
+    .info-item {
+      margin-bottom: 8px;
+      font-size: 14px;
+      color: #595959;
+    }
+
+    .info-item strong {
+      color: #262626;
+    }
+
+    .code-block {
+      background: #f5f5f5;
+      padding: 16px;
+      border-radius: 6px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      overflow-x: auto;
+      margin-top: 12px;
+    }
+
+    .status {
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-size: 13px;
+      margin-bottom: 16px;
+    }
+
+    .status.info {
+      background: #e6f7ff;
+      color: #1890ff;
+      border: 1px solid #91d5ff;
+    }
+
+    .status.success {
+      background: #f6ffed;
+      color: #52c41a;
+      border: 1px solid #b7eb8f;
+    }
+
+    .status.error {
+      background: #fff2e8;
+      color: #fa8c16;
+      border: 1px solid #ffd591;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>微信授权统一平台 - Demo</h1>
+      <p style="margin-top: 8px; opacity: 0.8;">演示如何对接微信授权服务</p>
+    </div>
+
+    <!-- 配置区域 -->
+    <div class="card">
+      <h2>1. 配置信息</h2>
+      <div class="input-group">
+        <label>服务器地址</label>
+        <input type="text" id="serverUrl" value="http://localhost:3000" placeholder="http://localhost:3000">
+      </div>
+      <div class="input-group">
+        <label>项目标识 (app_id)</label>
+        <input type="text" id="appId" value="project1" placeholder="在后台创建的项目标识">
+      </div>
+      <div class="input-group">
+        <label>回调地址 (redirect_uri)</label>
+        <input type="text" id="redirectUri" value="" placeholder="授权成功后的回调地址">
+      </div>
+    </div>
+
+    <!-- 授权区域 -->
+    <div class="card">
+      <h2>2. 发起授权</h2>
+      <div class="status info" id="authStatus">
+        请先配置好信息，然后点击下方按钮发起授权
+      </div>
+      <button class="btn btn-primary" onclick="authorize('snsapi_base')">静默授权 (snsapi_base)</button>
+      <button class="btn btn-success" onclick="authorize('snsapi_userinfo')">用户信息授权 (snsapi_userinfo)</button>
+      <div class="code-block" id="authUrl" style="display: none;"></div>
+    </div>
+
+    <!-- 用户信息区域 -->
+    <div class="card">
+      <h2>3. 用户信息</h2>
+      <div id="userInfo" class="user-info">
+        <img id="avatar" class="avatar" src="" alt="头像">
+        <div class="info-item"><strong>OpenID:</strong> <span id="openid"></span></div>
+        <div class="info-item"><strong>昵称:</strong> <span id="nickname"></span></div>
+        <div class="info-item"><strong>性别:</strong> <span id="sex"></span></div>
+        <div class="info-item"><strong>地区:</strong> <span id="location"></span></div>
+      </div>
+      <div id="noUserInfo" style="color: #8c8c8c; font-size: 14px;">
+        授权成功后，用户信息将显示在这里
+      </div>
+    </div>
+
+    <!-- JSSDK 配置区域 -->
+    <div class="card">
+      <h2>4. JSSDK 配置</h2>
+      <button class="btn btn-primary" onclick="getJssdkConfig()">获取 JSSDK 配置</button>
+      <div class="code-block" id="jssdkConfig" style="display: none;"></div>
+    </div>
+  </div>
+
+  <script>
+    // 页面加载时初始化
+    window.onload = function() {
+      // 设置默认回调地址为当前页面
+      document.getElementById('redirectUri').value = window.location.href.split('?')[0];
+
+      // 检查 URL 中是否有 code 参数（授权回调）
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+
+      if (code) {
+        handleCallback(code);
+      }
+    };
+
+    // 发起授权
+    function authorize(scope) {
+      const serverUrl = document.getElementById('serverUrl').value;
+      const appId = document.getElementById('appId').value;
+      const redirectUri = document.getElementById('redirectUri').value;
+
+      if (!serverUrl || !appId || !redirectUri) {
+        alert('请填写完整的配置信息');
+        return;
+      }
+
+      const authUrl = `${serverUrl}/auth/authorize?app_id=${appId}&redirect_uri=${encodeURIComponent(redirectUri)}&scope=${scope}`;
+
+      // 显示授权 URL
+      document.getElementById('authUrl').style.display = 'block';
+      document.getElementById('authUrl').textContent = authUrl;
+
+      // 更新状态
+      document.getElementById('authStatus').className = 'status info';
+      document.getElementById('authStatus').textContent = '正在跳转到授权页面...';
+
+      // 跳转到授权页面
+      setTimeout(() => {
+        window.location.href = authUrl;
+      }, 1000);
+    }
+
+    // 处理授权回调
+    async function handleCallback(code) {
+      const serverUrl = document.getElementById('serverUrl').value;
+
+      document.getElementById('authStatus').className = 'status info';
+      document.getElementById('authStatus').textContent = '正在获取用户信息...';
+
+      try {
+        const response = await fetch(`${serverUrl}/auth/callback?code=${code}`);
+        const data = await response.json();
+
+        if (data.openid) {
+          // 显示用户信息
+          displayUserInfo(data);
+
+          document.getElementById('authStatus').className = 'status success';
+          document.getElementById('authStatus').textContent = '授权成功！';
+        } else {
+          throw new Error('获取用户信息失败');
+        }
+      } catch (error) {
+        document.getElementById('authStatus').className = 'status error';
+        document.getElementById('authStatus').textContent = '授权失败: ' + error.message;
+      }
+    }
+
+    // 显示用户信息
+    function displayUserInfo(data) {
+      document.getElementById('userInfo').classList.add('show');
+      document.getElementById('noUserInfo').style.display = 'none';
+
+      if (data.avatar) {
+        document.getElementById('avatar').src = data.avatar;
+        document.getElementById('avatar').style.display = 'block';
+      } else {
+        document.getElementById('avatar').style.display = 'none';
+      }
+
+      document.getElementById('openid').textContent = data.openid || '-';
+      document.getElementById('nickname').textContent = data.nickname || '-';
+      document.getElementById('sex').textContent = data.sex === 1 ? '男' : data.sex === 2 ? '女' : '未知';
+      document.getElementById('location').textContent = `${data.province || ''} ${data.city || ''}`.trim() || '-';
+    }
+
+    // 获取 JSSDK 配置
+    async function getJssdkConfig() {
+      const serverUrl = document.getElementById('serverUrl').value;
+      const currentUrl = window.location.href.split('#')[0];
+
+      try {
+        const response = await fetch(`${serverUrl}/jssdk/signature?url=${encodeURIComponent(currentUrl)}`);
+        const data = await response.json();
+
+        // 显示配置
+        const configBlock = document.getElementById('jssdkConfig');
+        configBlock.style.display = 'block';
+        configBlock.textContent = JSON.stringify(data, null, 2);
+
+        alert('JSSDK 配置获取成功，请查看下方代码块');
+      } catch (error) {
+        alert('获取 JSSDK 配置失败: ' + error.message);
+      }
+    }
+  </script>
+</body>
+</html>
