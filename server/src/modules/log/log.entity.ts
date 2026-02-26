@@ -1,4 +1,6 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, Index } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, Index, ManyToOne, JoinColumn } from 'typeorm';
+import { Project } from '../project/project.entity';
+import { User } from '../user/user.entity';
 
 @Entity('auth_logs')
 @Index(['project_id'])
@@ -25,4 +27,12 @@ export class AuthLog {
 
   @CreateDateColumn()
   created_at: Date;
+
+  @ManyToOne(() => Project)
+  @JoinColumn({ name: 'project_id' })
+  project: Project;
+
+  @ManyToOne(() => User)
+  @JoinColumn({ name: 'openid', referencedColumnName: 'openid' })
+  user: User;
 }

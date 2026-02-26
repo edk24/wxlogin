@@ -71,6 +71,17 @@ const ProjectList: React.FC = () => {
     }
   };
 
+  // 切换项目状态
+  const handleStatusChange = async (id: number, status: number) => {
+    try {
+      await updateProject(id, { status } as any);
+      message.success('状态更新成功');
+      loadProjects();
+    } catch (error) {
+      message.error('状态更新失败');
+    }
+  };
+
   const columns = [
     { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
     { title: '项目标识', dataIndex: 'app_id', key: 'app_id' },
@@ -80,7 +91,14 @@ const ProjectList: React.FC = () => {
       title: '状态',
       dataIndex: 'status',
       key: 'status',
-      render: (status: number) => (status === 1 ? '启用' : '禁用'),
+      render: (status: number, record: Project) => (
+        <Switch
+          checked={status === 1}
+          checkedChildren="启用"
+          unCheckedChildren="禁用"
+          onChange={(checked) => handleStatusChange(record.id!, checked ? 1 : 0)}
+        />
+      ),
     },
     {
       title: '操作',

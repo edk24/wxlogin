@@ -22,6 +22,7 @@ export class LogService {
 
     const [data, total] = await this.logRepository.findAndCount({
       where,
+      relations: ['project', 'user'],
       skip: (page - 1) * pageSize,
       take: pageSize,
       order: { created_at: 'DESC' },
@@ -39,12 +40,14 @@ export class LogService {
     const total = await this.logRepository.count();
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const todayCount = await this.logRepository.count({
-      where: {
-        created_at: today as any,
-      },
-    });
+    const todayCount = await this.logRepository
+      .createQueryBuilder('log')
+      .where('log.created_at >= :today', { today })
+      .andWhere('log.created_at < :tomorrow', { tomorrow })
+      .getCount();
 
     return {
       total,

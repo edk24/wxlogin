@@ -40,9 +40,23 @@ const LogList: React.FC = () => {
 
   const columns = [
     { title: 'ID', dataIndex: 'id', key: 'id', width: 80 },
-    { title: '项目ID', dataIndex: 'project_id', key: 'project_id', width: 100 },
-    { title: '用户ID', dataIndex: 'user_id', key: 'user_id', width: 100 },
-    { title: '授权类型', dataIndex: 'auth_type', key: 'auth_type' },
+    {
+      title: '项目标识',
+      dataIndex: ['project', 'app_id'],
+      key: 'project_app_id',
+      render: (_: any, record: AuthLog) => record.project?.app_id || '-'
+    },
+    {
+      title: '用户信息',
+      key: 'user_info',
+      render: (_: any, record: AuthLog) => {
+        if (record.user?.nickname) {
+          return `${record.user.nickname} (${record.openid})`;
+        }
+        return record.openid;
+      }
+    },
+    { title: '授权类型', dataIndex: 'scope', key: 'scope' },
     { title: 'IP地址', dataIndex: 'ip', key: 'ip' },
     { title: 'User Agent', dataIndex: 'user_agent', key: 'user_agent', ellipsis: true },
     { title: '创建时间', dataIndex: 'created_at', key: 'created_at' },
