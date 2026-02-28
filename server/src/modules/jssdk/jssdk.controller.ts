@@ -1,12 +1,12 @@
-import { Controller, Post, Body } from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 import { JssdkService } from './jssdk.service';
 
 @Controller('jssdk')
 export class JssdkController {
   constructor(private jssdkService: JssdkService) {}
 
-  @Post('signature')
-  async getSignature(@Body('url') url: string) {
+  @Get('signature')
+  async getSignature(@Query('url') url: string) {
     try {
       const signature = await this.jssdkService.generateSignature(url);
       return {
