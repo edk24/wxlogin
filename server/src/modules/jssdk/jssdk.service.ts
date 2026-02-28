@@ -1,9 +1,8 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
 import axios from 'axios';
 import * as crypto from 'crypto';
+import Redis from 'ioredis';
 
 @Injectable()
 export class JssdkService {
@@ -12,7 +11,7 @@ export class JssdkService {
 
   constructor(
     private configService: ConfigService,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    @Inject('REDIS_CLIENT') private redis: Redis,
   ) {
     this.appId = this.configService.get('wechat.appId');
     this.appSecret = this.configService.get('wechat.appSecret');
@@ -21,7 +20,7 @@ export class JssdkService {
   // 获取access_token
   async getAccessToken(): Promise<string> {
     const cacheKey = `wechat:access_token:${this.appId}`;
-    const cached = await this.cacheManager.get<string>(cacheKey);
+    const cached = await this.redis.get(cacheKey);
     if (cached) return cached;
 
     const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${this.appId}&secret=${this.appSecret}`;
@@ -36,14 +35,14 @@ export class JssdkService {
       throw new Error('access_token为空');
     }
 
-    await this.cacheManager.set(cacheKey, accessToken, 7000000); // 7000秒
+    await this.redis.setex(cacheKey, 7000, accessToken);
     return accessToken;
   }
 
   // 获取jsapi_ticket
   async getJsapiTicket(): Promise<string> {
     const cacheKey = `wechat:jsapi_ticket:${this.appId}`;
-    const cached = await this.cacheManager.get<string>(cacheKey);
+    const cached = await this.redis.get(cacheKey);
     if (cached) return cached;
 
     const accessToken = await this.getAccessToken();
@@ -59,7 +58,7 @@ export class JssdkService {
       throw new Error('jsapi_ticket为空');
     }
 
-    await this.cacheManager.set(cacheKey, ticket, 7000000); // 7000秒
+    await this.redis.setex(cacheKey, 7000, ticket);
     return ticket;
   }
 
