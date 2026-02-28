@@ -26,7 +26,15 @@ export class JssdkService {
 
     const url = `https://api.weixin.qq.com/cgi-bin/token?grant_type=client_credential&appid=${this.appId}&secret=${this.appSecret}`;
     const response = await axios.get(url);
+
+    if (response.data.errcode) {
+      throw new Error(`获取access_token失败: ${response.data.errmsg} (errcode: ${response.data.errcode})`);
+    }
+
     const accessToken = response.data.access_token;
+    if (!accessToken) {
+      throw new Error('access_token为空');
+    }
 
     await this.cacheManager.set(cacheKey, accessToken, 7000000); // 7000秒
     return accessToken;
@@ -41,7 +49,15 @@ export class JssdkService {
     const accessToken = await this.getAccessToken();
     const url = `https://api.weixin.qq.com/cgi-bin/ticket/getticket?access_token=${accessToken}&type=jsapi`;
     const response = await axios.get(url);
+
+    if (response.data.errcode && response.data.errcode !== 0) {
+      throw new Error(`获取jsapi_ticket失败: ${response.data.errmsg} (errcode: ${response.data.errcode})`);
+    }
+
     const ticket = response.data.ticket;
+    if (!ticket) {
+      throw new Error('jsapi_ticket为空');
+    }
 
     await this.cacheManager.set(cacheKey, ticket, 7000000); // 7000秒
     return ticket;
@@ -53,14 +69,17 @@ export class JssdkService {
     const nonceStr = this.createNonceStr();
     const timestamp = Math.floor(Date.now() / 1000);
 
-    const string = `jsapi_ticket=${ticket}&noncestr=${nonceStr}&timestamp=${timestamp}&url=${url}`;
+    // 移除 URL 中的 # 及其后面部分
+    const cleanUrl = url.split('#')[0];
+
+    const string = `jsapi_ticket=${ticket}&noncestr=${nonceStr}&timestamp=${timestamp}&url=${cleanUrl}`;
     const signature = crypto.createHash('sha1').update(string).digest('hex');
 
     return {
       appId: this.appId,
       timestamp,
       nonceStr,
-      signature,
+      signature
     };
   }
 
