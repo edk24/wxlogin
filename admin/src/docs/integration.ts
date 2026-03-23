@@ -99,14 +99,27 @@ GET https://auth.activity.ioi.plus/api/jssdk/signature?url={当前页面URL}
 }
 \`\`\`
 
-### 前端配置示例
+### 引入方式
 
-\`\`\`javascript
-// 0. 引入微信 JSSDK (直接使用)
+**方式一：npm 包（推荐，适合模块化项目）**
+
+\`\`\`bash
+pnpm add weixin-js-sdk
+\`\`\`
+
+\`\`\`typescript
+import wx from 'weixin-js-sdk'
+\`\`\`
+
+**方式二：CDN 直接引入**
+
+\`\`\`html
 <script src="//res.wx.qq.com/open/js/jweixin-1.4.0.js" defer></script>
+\`\`\`
 
-import wx from 'weixin-js-sdk'  （如果是模块化环境）
+### 配置示例
 
+\`\`\`typescript
 // 1. 获取签名配置
 const url = encodeURIComponent(window.location.href.split('#')[0]);
 const response = await fetch(\`https://auth.activity.ioi.plus/api/jssdk/signature?url=\${url}\`);
