@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CacheModule } from '@nestjs/cache-manager';
-import { ioRedisStore } from '@tirke/node-cache-manager-ioredis';
+import KeyvRedis from '@keyv/redis';
 import { ProjectModule } from './modules/project/project.module';
 import { UserModule } from './modules/user/user.module';
 import { LogModule } from './modules/log/log.module';
@@ -19,15 +19,19 @@ import databaseConfig from './config/database.config';
     }),
     CacheModule.registerAsync({
       isGlobal: true,
-      useFactory: () => ({
-        store: ioRedisStore({
-          host: process.env.REDIS_HOST || 'localhost',
-          port: parseInt(process.env.REDIS_PORT || '6379'),
-          password: process.env.REDIS_PASSWORD || undefined,
-          db: parseInt(process.env.REDIS_DB || '0'),
-          ttl: 300, // 默认5分钟（秒）
-        }),
-      }),
+      useFactory: () => {
+        const host = process.env.REDIS_HOST || 'localhost';
+        const port = process.env.REDIS_PORT || '6379';
+        const password = process.env.REDIS_PASSWORD;
+        const db = process.env.REDIS_DB || '0';
+        const auth = password ? `:${password}@` : '';
+        const redisUrl = `redis://${auth}${host}:${port}/${db}`;
+
+        return {
+          stores: [new KeyvRedis(redisUrl)],
+          ttl: 300_000, // 默认5分钟（毫秒，cache-manager v7 使用毫秒）
+        };
+      },
     }),
     TypeOrmModule.forRoot({
       type: 'mysql',

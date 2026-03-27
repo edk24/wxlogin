@@ -1,4 +1,4 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
@@ -11,6 +11,8 @@ import { AuthLog } from '../log/log.entity';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     @InjectRepository(Project)
     private projectRepository: Repository<Project>,
@@ -36,17 +38,21 @@ export class AuthService {
   // 保存state数据到Redis
   async saveStateData(stateData: any): Promise<string> {
     const stateId = randomUUID();
-    await this.cacheManager.set(`oauth:state:${stateId}`, JSON.stringify(stateData), 300000); // 5分钟
+    await this.cacheManager.set(`oauth:state:${stateId}`, JSON.stringify(stateData), 300_000); // 5分钟（毫秒）
+    this.logger.log(`[saveStateData] stateId=${stateId}, scope=${stateData.scope}`);
     return stateId;
   }
 
   // 从Redis获取state数据
   async getStateData(stateId: string): Promise<any> {
+    this.logger.log(`[getStateData] 尝试获取 stateId=${stateId}`);
     const data = await this.cacheManager.get(`oauth:state:${stateId}`);
     if (!data) {
+      this.logger.error(`[getStateData] state 数据不存在或已过期: stateId=${stateId}`);
       throw new Error('授权已过期，请重新授权');
     }
     await this.cacheManager.del(`oauth:state:${stateId}`); // 使用后立即删除
+    this.logger.log(`[getStateData] 成功获取并删除 stateId=${stateId}`);
     return JSON.parse(data as string);
   }
 
