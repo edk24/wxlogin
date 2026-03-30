@@ -1,9 +1,6 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import { Cache } from 'cache-manager';
-import { randomUUID } from 'crypto';
 import { WechatService } from './wechat.service';
 import { Project } from '../project/project.entity';
 import { User } from '../user/user.entity';
@@ -21,7 +18,6 @@ export class AuthService {
     @InjectRepository(AuthLog)
     private logRepository: Repository<AuthLog>,
     private wechatService: WechatService,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   // 获取项目信息
@@ -35,27 +31,6 @@ export class AuthService {
     return project;
   }
 
-  // 保存state数据到Redis
-  async saveStateData(stateData: any): Promise<string> {
-    const stateId = randomUUID();
-    await this.cacheManager.set(`oauth:state:${stateId}`, JSON.stringify(stateData), 300_000); // 5分钟（毫秒）
-    this.logger.log(`[saveStateData] stateId=${stateId}, scope=${stateData.scope}`);
-    return stateId;
-  }
-
-  // 从Redis获取state数据
-  async getStateData(stateId: string): Promise<any> {
-    this.logger.log(`[getStateData] 尝试获取 stateId=${stateId}`);
-    const data = await this.cacheManager.get(`oauth:state:${stateId}`);
-    if (!data) {
-      this.logger.error(`[getStateData] state 数据不存在或已过期: stateId=${stateId}`);
-      throw new Error('授权已过期，请重新授权');
-    }
-    await this.cacheManager.del(`oauth:state:${stateId}`); // 使用后立即删除
-    this.logger.log(`[getStateData] 成功获取并删除 stateId=${stateId}`);
-    return JSON.parse(data as string);
-  }
-
   // 生成微信授权URL
   async generateAuthUrl(appId: string, redirectUri: string, scope: string, state: string): Promise<string> {
     const project = await this.projectRepository.findOne({ where: { app_id: appId, status: 1 } });
@@ -64,9 +39,13 @@ export class AuthService {
     }
 
     const wechatAppId = process.env.WECHAT_APPID;
-    const encodedRedirect = encodeURIComponent(`${process.env.BASE_URL || 'http://localhost:3000'}/oauth/callback`);
+    const callbackUrl = new URL(`${process.env.BASE_URL || 'http://localhost:3000'}/oauth/callback`);
+    callbackUrl.searchParams.set('app_id', appId);
+    callbackUrl.searchParams.set('redirect_uri', redirectUri);
+    callbackUrl.searchParams.set('scope', scope);
+    const encodedRedirect = encodeURIComponent(callbackUrl.toString());
 
-    return `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${wechatAppId}&redirect_uri=${encodedRedirect}&response_type=code&scope=${scope}&state=${state}#wechat_redirect`;
+    return `https://open.weixin.qq.com/connect/oauth2/authorize?appid=${wechatAppId}&redirect_uri=${encodedRedirect}&response_type=code&forcePopup=true&scope=${scope}&state=${state}#wechat_redirect`;
   }
 
   // 处理微信回调

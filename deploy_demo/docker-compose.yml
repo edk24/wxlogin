@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  wx-auth-server:
+    image: edk24/wx-auth-server:v0.1.2
+    container_name: wx-auth-server
+    ports:
+      - "3008:80"
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+    volumes:
+      - ./.env:/app/.env
+    restart: unless-stopped
+    depends_on:
+      redis:
+        condition: service_healthy
+    networks:
+      - auth-wx-network
+    extra_hosts: 
+        - "host.docker.internal:host-gateway"
+
+  redis:
+    image: redis:7-alpine
+    container_name: wx-auth-redis
+    restart: unless-stopped
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - auth-wx-network
+
+networks:
+  auth-wx-network:
+    driver: bridge
+
+volumes:
+  redis-data:

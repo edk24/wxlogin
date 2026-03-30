@@ -16,23 +16,12 @@ export class AuthController {
     @Res() res: Response,
   ) {
     try {
-      // 构造完整的state数据
-      const stateData = {
-        appId,
-        redirect,
-        scope: scope || 'snsapi_base',
-        state: state || '',
-      };
-
-      // 保存到Redis，获取短ID
-      const stateId = await this.authService.saveStateData(stateData);
-
-      // 生成微信授权URL（只传递短ID）
+      // 生成微信授权URL，state 透传不做缓存
       const authUrl = await this.authService.generateAuthUrl(
         appId,
         redirect,
         scope || 'snsapi_base',
-        stateId,
+        state || '',
       );
 
       // 重定向到微信授权页面
@@ -46,15 +35,20 @@ export class AuthController {
   @Get('callback')
   async callback(
     @Query('code') code: string,
-    @Query('state') stateId: string,
+    @Query('state') state: string,
+    @Query('app_id') appId: string,
+    @Query('redirect_uri') redirect: string,
+    @Query('scope') scope: string,
     @Res() res: Response,
   ) {
     try {
-      // 从Redis获取完整的state数据
-      const stateData = await this.authService.getStateData(stateId);
-
       // 使用stateData处理回调
-      const result = await this.authService.handleCallback(code, stateData);
+      const result = await this.authService.handleCallback(code, {
+        appId,
+        redirect,
+        scope: scope || 'snsapi_base',
+        state: state || '',
+      });
 
       // 构造URL参数
       const params = new URLSearchParams();
