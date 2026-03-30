@@ -1,0 +1,112 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: wxlogin-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-wxlogin_dev_root}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-wxlogin}
+      TZ: ${TZ:-Asia/Shanghai}
+    ports:
+      - "${MYSQL_PORT:-3306}:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  redis:
+    image: redis:7-alpine
+    container_name: wxlogin-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  server:
+    image: node:20-bullseye
+    container_name: wxlogin-server
+    restart: unless-stopped
+    working_dir: /workspace/server
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USERNAME: root
+      DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-wxlogin_dev_root}
+      DB_DATABASE: ${MYSQL_DATABASE:-wxlogin}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ""
+      REDIS_DB: 0
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: 1000
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      - ./server:/workspace/server
+      - server_node_modules:/workspace/server/node_modules
+    ports:
+      - "${SERVER_PORT:-3000}:3000"
+    command: >
+      sh -c "ulimit -n 65535 &&
+      corepack enable &&
+      pnpm install --child-concurrency=4 --network-concurrency=4 &&
+      pnpm run start:dev"
+
+  admin:
+    image: node:20-bullseye
+    container_name: wxlogin-admin
+    restart: unless-stopped
+    working_dir: /workspace/admin
+    ulimits:
+      nofile:
+        soft: 65535
+        hard: 65535
+    depends_on:
+      - server
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      CHOKIDAR_INTERVAL: 1000
+      VITE_API_PROXY_TARGET: http://server:3000
+      VITE_PORT: 5173
+      TZ: ${TZ:-Asia/Shanghai}
+    volumes:
+      - ./admin:/workspace/admin
+      - admin_node_modules:/workspace/admin/node_modules
+    ports:
+      - "${ADMIN_PORT:-5173}:5173"
+    command: >
+      sh -c "ulimit -n 65535 &&
+      corepack enable &&
+      pnpm install --child-concurrency=4 --network-concurrency=4 &&
+      pnpm run dev --host 0.0.0.0 --port 5173"
+
+volumes:
+  mysql_data:
+  redis_data:
+  server_node_modules:
+  admin_node_modules:

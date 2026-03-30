@@ -43,6 +43,37 @@ npm install
 npm run dev
 ```
 
+### Docker Compose 本地开发
+
+在项目根目录执行：
+
+```bash
+docker compose up --build
+```
+
+启动后默认访问地址：
+
+- 管理后台：http://localhost:5173
+- 后端接口：http://localhost:3000/api
+- MySQL：localhost:3306
+- Redis：localhost:6379
+
+说明：
+
+- `server` 容器会直接挂载 `./server`，`admin` 容器会直接挂载 `./admin`，修改代码后可用于本地热更新调试。
+- 后端仍然读取 `server/.env` 里的微信、管理员等配置，但数据库和 Redis 地址会在 Compose 中自动改为容器服务名。
+- 如果本机端口冲突，可在根目录 `.env` 里覆盖这些变量后再启动：
+
+```bash
+ADMIN_PORT=5174
+SERVER_PORT=3001
+MYSQL_PORT=3307
+REDIS_PORT=6380
+MYSQL_ROOT_PASSWORD=wxlogin_dev_root
+MYSQL_DATABASE=wxlogin
+TZ=Asia/Shanghai
+```
+
 ## 核心功能
 
 ### 1. OAuth 授权
